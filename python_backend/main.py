@@ -359,6 +359,241 @@ def api_perform_sync():
 
 
 # ============================================
+# PAPER SCANNING ENDPOINTS
+# These scan papers for terms and build the link database
+# ============================================
+
+@app.route('/scan/paper', methods=['POST'])
+def api_scan_paper():
+    """
+    Scan a single paper for terms, get definitions, create links.
+
+    This is the MAIN function for auto-linking.
+
+    The plugin sends:
+    - note_path: Path to the paper
+    - vault_path: Path to the vault
+    - auto_link: Whether to add links (default True)
+    - fetch_definitions: Whether to fetch from Wikipedia (default True)
+    - create_files: Whether to create definition files (default True)
+
+    Returns:
+    - Complete summary of terms found, definitions fetched, links created
+    """
+    from linking.paper_scanner import scan_paper
+
+    data = request.get_json()
+    note_path = data.get('note_path')
+    vault_path = data.get('vault_path')
+    auto_link = data.get('auto_link', True)
+    fetch_definitions = data.get('fetch_definitions', True)
+    create_files = data.get('create_files', True)
+
+    try:
+        result = scan_paper(
+            note_path, vault_path,
+            auto_link, fetch_definitions, create_files
+        )
+        return jsonify({
+            "status": "success",
+            "result": result
+        })
+    except Exception as e:
+        return jsonify({
+            "status": "error",
+            "message": str(e)
+        }), 500
+
+
+@app.route('/scan/folder', methods=['POST'])
+def api_scan_folder():
+    """
+    Scan all papers in a folder.
+
+    The plugin sends:
+    - folder_path: Folder containing papers
+    - vault_path: Path to the vault
+    - recursive: Whether to scan subfolders (default True)
+
+    Returns:
+    - Summary of all papers scanned
+    """
+    from linking.paper_scanner import scan_folder
+
+    data = request.get_json()
+    folder_path = data.get('folder_path')
+    vault_path = data.get('vault_path')
+    recursive = data.get('recursive', True)
+
+    try:
+        result = scan_folder(
+            folder_path, vault_path,
+            auto_link=True,
+            fetch_definitions=True,
+            create_files=True,
+            recursive=recursive
+        )
+        return jsonify({
+            "status": "success",
+            "result": result
+        })
+    except Exception as e:
+        return jsonify({
+            "status": "error",
+            "message": str(e)
+        }), 500
+
+
+@app.route('/terms/stats', methods=['GET'])
+def api_term_statistics():
+    """
+    Get statistics about all terms in the database.
+
+    Returns:
+    - Total terms
+    - Terms with/without definitions
+    - Top terms by occurrence
+    - Terms by type
+    """
+    from linking.paper_scanner import get_term_statistics
+
+    try:
+        stats = get_term_statistics()
+        return jsonify({
+            "status": "success",
+            "statistics": stats
+        })
+    except Exception as e:
+        return jsonify({
+            "status": "error",
+            "message": str(e)
+        }), 500
+
+
+@app.route('/terms/occurrences', methods=['POST'])
+def api_term_occurrences():
+    """
+    Get all places where a term appears.
+
+    The plugin sends:
+    - term: The term to find
+
+    Returns:
+    - List of notes and contexts where it appears
+    """
+    from linking.paper_scanner import get_term_occurrences
+
+    data = request.get_json()
+    term = data.get('term')
+
+    try:
+        occurrences = get_term_occurrences(term)
+        return jsonify({
+            "status": "success",
+            "term": term,
+            "occurrences": occurrences
+        })
+    except Exception as e:
+        return jsonify({
+            "status": "error",
+            "message": str(e)
+        }), 500
+
+
+@app.route('/terms/unlinked', methods=['GET'])
+def api_unlinked_terms():
+    """
+    Find all terms that haven't been linked yet.
+
+    Returns:
+    - List of terms needing attention
+    """
+    from linking.paper_scanner import find_unlinked_terms
+
+    try:
+        unlinked = find_unlinked_terms()
+        return jsonify({
+            "status": "success",
+            "unlinked_terms": unlinked
+        })
+    except Exception as e:
+        return jsonify({
+            "status": "error",
+            "message": str(e)
+        }), 500
+
+
+@app.route('/terms/add', methods=['POST'])
+def api_add_manual_term():
+    """
+    Manually add a term that the system missed.
+
+    The plugin sends:
+    - term: The term
+    - definition: Your custom definition
+    - vault_path: Where to create the file
+
+    Returns:
+    - Path to created file
+    """
+    from linking.paper_scanner import add_manual_term
+
+    data = request.get_json()
+    term = data.get('term')
+    definition = data.get('definition')
+    vault_path = data.get('vault_path')
+
+    try:
+        result = add_manual_term(term, definition, vault_path)
+        return jsonify({
+            "status": "success" if result["success"] else "error",
+            "result": result
+        })
+    except Exception as e:
+        return jsonify({
+            "status": "error",
+            "message": str(e)
+        }), 500
+
+
+@app.route('/definition/fetch', methods=['POST'])
+def api_fetch_definition():
+    """
+    Fetch a definition from Wikipedia and create a file.
+
+    The plugin sends:
+    - term: Word to look up
+    - vault_path: Where to create the file
+
+    Returns:
+    - The definition data and file path
+    """
+    from linking.definition_lookup import lookup_definition
+
+    data = request.get_json()
+    term = data.get('term')
+    vault_path = data.get('vault_path')
+
+    try:
+        definition = lookup_definition(term, vault_path, create_file=True)
+        if definition:
+            return jsonify({
+                "status": "success",
+                "definition": definition
+            })
+        else:
+            return jsonify({
+                "status": "not_found",
+                "message": f"No definition found for '{term}'"
+            }), 404
+    except Exception as e:
+        return jsonify({
+            "status": "error",
+            "message": str(e)
+        }), 500
+
+
+# ============================================
 # START THE SERVER
 # ============================================
 

@@ -128,6 +128,89 @@ def ensure_db_exists():
         )
     ''')
 
+    # ============================================
+    # NEW TABLES FOR LINK TRACKING
+    # ============================================
+
+    # Definition access log - tracks every time a definition is looked up
+    cursor.execute('''
+        CREATE TABLE IF NOT EXISTS definition_access_log (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            uuid TEXT UNIQUE NOT NULL,
+            term TEXT NOT NULL,
+            source TEXT,
+            vault_path TEXT,
+            accessed_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            synced INTEGER DEFAULT 0
+        )
+    ''')
+
+    # Definition files - tracks all created definition files
+    cursor.execute('''
+        CREATE TABLE IF NOT EXISTS definition_files (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            uuid TEXT UNIQUE NOT NULL,
+            term TEXT NOT NULL,
+            file_path TEXT NOT NULL,
+            source TEXT,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            synced INTEGER DEFAULT 0
+        )
+    ''')
+
+    # Term occurrences - tracks where each term appears in notes
+    cursor.execute('''
+        CREATE TABLE IF NOT EXISTS term_occurrences (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            uuid TEXT UNIQUE NOT NULL,
+            term TEXT NOT NULL,
+            note_uuid TEXT,
+            note_path TEXT,
+            line_number INTEGER,
+            context TEXT,
+            linked INTEGER DEFAULT 0,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            synced INTEGER DEFAULT 0,
+            FOREIGN KEY (note_uuid) REFERENCES notes(uuid)
+        )
+    ''')
+
+    # Term registry - master list of all known terms
+    cursor.execute('''
+        CREATE TABLE IF NOT EXISTS term_registry (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            uuid TEXT UNIQUE NOT NULL,
+            term TEXT UNIQUE NOT NULL,
+            term_type TEXT,
+            has_definition INTEGER DEFAULT 0,
+            definition_source TEXT,
+            occurrence_count INTEGER DEFAULT 0,
+            first_seen TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            last_seen TIMESTAMP,
+            synced INTEGER DEFAULT 0
+        )
+    ''')
+
+    # Auto-link history - tracks all auto-linking operations
+    cursor.execute('''
+        CREATE TABLE IF NOT EXISTS auto_link_history (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            uuid TEXT UNIQUE NOT NULL,
+            note_path TEXT NOT NULL,
+            terms_found INTEGER DEFAULT 0,
+            terms_linked INTEGER DEFAULT 0,
+            terms_skipped INTEGER DEFAULT 0,
+            processed_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            synced INTEGER DEFAULT 0
+        )
+    ''')
+
+    # Create indexes for faster lookups
+    cursor.execute('CREATE INDEX IF NOT EXISTS idx_term_occurrences_term ON term_occurrences(term)')
+    cursor.execute('CREATE INDEX IF NOT EXISTS idx_term_occurrences_note ON term_occurrences(note_uuid)')
+    cursor.execute('CREATE INDEX IF NOT EXISTS idx_term_registry_term ON term_registry(term)')
+    cursor.execute('CREATE INDEX IF NOT EXISTS idx_definition_access_term ON definition_access_log(term)')
+
     conn.commit()
     conn.close()
 

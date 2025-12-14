@@ -120,6 +120,7 @@ See [ARCHITECTURE.md](ARCHITECTURE.md) for comprehensive documentation including
 
 ## API Endpoints
 
+### Classification & Tags
 | Endpoint | Method | Description |
 |----------|--------|-------------|
 | `/health` | GET | Check if backend is running |
@@ -128,13 +129,62 @@ See [ARCHITECTURE.md](ARCHITECTURE.md) for comprehensive documentation including
 | `/uuid/generate` | POST | Generate a new UUID |
 | `/tags/write` | POST | Write tags to a note |
 | `/tags/parse` | POST | Read tags from a note |
+
+### Paper Scanning & Linking (NEW)
+| Endpoint | Method | Description |
+|----------|--------|-------------|
+| `/scan/paper` | POST | Scan a paper, find terms, get definitions, create links |
+| `/scan/folder` | POST | Scan all papers in a folder |
+| `/terms/stats` | GET | Get statistics about all terms in database |
+| `/terms/occurrences` | POST | Get all places where a term appears |
+| `/terms/unlinked` | GET | Find terms that haven't been linked |
+| `/terms/add` | POST | Manually add a term the system missed |
+| `/definition/fetch` | POST | Fetch definition from Wikipedia and create file |
 | `/terms/find` | POST | Find terms in a note |
 | `/definition/lookup` | POST | Look up a definition |
 | `/link/auto` | POST | Auto-link terms in a note |
+
+### Semantic & Sync
+| Endpoint | Method | Description |
+|----------|--------|-------------|
 | `/semantic/tree` | POST | Build semantic tree |
 | `/semantic/mermaid` | POST | Generate Mermaid diagram |
 | `/sync/vault` | POST | Scan vault for changes |
 | `/sync/perform` | POST | Perform full sync |
+
+## Auto-Linking System
+
+The system automatically:
+
+1. **Scans papers** for proper nouns, technical terms, and phrases
+2. **Looks up definitions** from:
+   - Your local Definitions folder (highest priority)
+   - SQLite cache (previously fetched)
+   - Stanford Encyclopedia of Philosophy
+   - Wikipedia (with full section extraction)
+3. **Creates definition files** with all sections from Wikipedia
+4. **Links terms** in your notes to definitions
+5. **Builds a database** tracking every term and link
+
+### Example Usage
+
+```python
+# Scan a single paper
+POST /scan/paper
+{
+    "note_path": "/vault/papers/physics.md",
+    "vault_path": "/vault"
+}
+
+# Returns:
+{
+    "terms_found": 15,
+    "definitions_fetched": 12,
+    "files_created": 10,
+    "links_added": 8,
+    "terms": [...]
+}
+```
 
 ## Configuration
 
