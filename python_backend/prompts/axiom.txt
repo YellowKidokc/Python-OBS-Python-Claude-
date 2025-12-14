@@ -1,0 +1,22 @@
+Analyze the following text and find all AXIOMS.
+
+An axiom is a statement that:
+- Is assumed to be true without requiring proof
+- Serves as a foundational belief or starting point
+- Other claims or arguments build upon it
+- Is self-evident or accepted as a basic truth
+
+Look for phrases like:
+- "It is self-evident that..."
+- "We assume that..."
+- "The fundamental principle is..."
+- "It is axiomatic that..."
+
+For each axiom found, extract the exact quote from the text.
+
+Format your response as a numbered list:
+1. "First axiom quote here"
+2. "Second axiom quote here"
+
+Only include actual axioms - foundational statements that are assumed true.
+Do not include claims that require evidence or proof.

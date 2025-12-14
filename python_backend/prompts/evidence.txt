@@ -1,0 +1,24 @@
+Analyze the following text and find all EVIDENCE.
+
+Evidence is:
+- Data, observations, or experimental results
+- References to studies, experiments, or research
+- Citations or quotes from authoritative sources
+- Empirical observations that support claims
+- Statistical data or measurements
+
+Look for:
+- Numbers and statistics
+- References to studies or papers
+- Experimental observations
+- Historical events used as support
+- Expert quotes or citations
+
+For each piece of evidence found, extract the exact quote from the text.
+
+Format your response as a numbered list:
+1. "First evidence quote here"
+2. "Second evidence quote here"
+
+Only include actual evidence - supporting material for claims.
+Do not include the claims themselves or opinions.
