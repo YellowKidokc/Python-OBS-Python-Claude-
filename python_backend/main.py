@@ -594,6 +594,369 @@ def api_fetch_definition():
 
 
 # ============================================
+# LINK PREVIEW & SETTINGS ENDPOINTS
+# Preview before linking, disable terms, undo actions
+# ============================================
+
+@app.route('/link/preview', methods=['POST'])
+def api_link_preview():
+    """
+    Generate a preview of what will be linked.
+
+    Shows BEFORE linking happens so user can approve/modify.
+
+    The plugin sends:
+    - note_path: Paper to preview
+    - vault_path: Vault path
+
+    Returns:
+    - Preview with terms to link, skip, and estimated API calls
+    """
+    from linking.link_preview import generate_link_preview
+    from linking.term_finder import find_terms
+
+    data = request.get_json()
+    note_path = data.get('note_path')
+    vault_path = data.get('vault_path')
+
+    try:
+        terms = find_terms(note_path)
+        preview = generate_link_preview(note_path, vault_path, terms)
+        return jsonify({
+            "status": "success",
+            "preview": preview
+        })
+    except Exception as e:
+        return jsonify({
+            "status": "error",
+            "message": str(e)
+        }), 500
+
+
+@app.route('/link/settings', methods=['GET'])
+def api_get_link_settings():
+    """
+    Get all link settings (disabled terms, papers, preferences).
+    """
+    from linking.link_preview import get_link_settings
+
+    try:
+        settings = get_link_settings()
+        return jsonify({
+            "status": "success",
+            "settings": settings
+        })
+    except Exception as e:
+        return jsonify({
+            "status": "error",
+            "message": str(e)
+        }), 500
+
+
+@app.route('/link/disable/term', methods=['POST'])
+def api_disable_term():
+    """
+    Disable linking for a term (globally or per-paper).
+
+    The plugin sends:
+    - term: Word to disable
+    - paper_path: (optional) Only disable for this paper
+    """
+    from linking.link_preview import disable_term_globally, disable_term_in_paper
+
+    data = request.get_json()
+    term = data.get('term')
+    paper_path = data.get('paper_path')
+
+    try:
+        if paper_path:
+            success = disable_term_in_paper(term, paper_path)
+            msg = f"Term '{term}' disabled for this paper"
+        else:
+            success = disable_term_globally(term)
+            msg = f"Term '{term}' disabled globally"
+
+        return jsonify({
+            "status": "success" if success else "error",
+            "message": msg
+        })
+    except Exception as e:
+        return jsonify({
+            "status": "error",
+            "message": str(e)
+        }), 500
+
+
+@app.route('/link/enable/term', methods=['POST'])
+def api_enable_term():
+    """
+    Re-enable linking for a term.
+
+    The plugin sends:
+    - term: Word to re-enable
+    - paper_path: (optional) Only re-enable for this paper
+    """
+    from linking.link_preview import enable_term
+
+    data = request.get_json()
+    term = data.get('term')
+    paper_path = data.get('paper_path')
+
+    try:
+        success = enable_term(term, paper_path)
+        return jsonify({
+            "status": "success" if success else "error",
+            "message": f"Term '{term}' re-enabled"
+        })
+    except Exception as e:
+        return jsonify({
+            "status": "error",
+            "message": str(e)
+        }), 500
+
+
+@app.route('/link/disable/paper', methods=['POST'])
+def api_disable_paper():
+    """
+    Disable ALL auto-linking for a specific paper.
+
+    The plugin sends:
+    - paper_path: Paper to exclude
+    """
+    from linking.link_preview import disable_paper
+
+    data = request.get_json()
+    paper_path = data.get('paper_path')
+
+    try:
+        success = disable_paper(paper_path)
+        return jsonify({
+            "status": "success" if success else "error",
+            "message": f"Auto-linking disabled for this paper"
+        })
+    except Exception as e:
+        return jsonify({
+            "status": "error",
+            "message": str(e)
+        }), 500
+
+
+@app.route('/link/preference', methods=['POST'])
+def api_set_preference():
+    """
+    Set a linking preference.
+
+    The plugin sends:
+    - name: Preference name (show_preview, link_all_occurrences)
+    - value: Value to set
+    """
+    from linking.link_preview import set_preference
+
+    data = request.get_json()
+    name = data.get('name')
+    value = data.get('value')
+
+    try:
+        success = set_preference(name, str(value))
+        return jsonify({
+            "status": "success" if success else "error",
+            "message": f"Preference '{name}' set to '{value}'"
+        })
+    except Exception as e:
+        return jsonify({
+            "status": "error",
+            "message": str(e)
+        }), 500
+
+
+# ============================================
+# ACTION LOG & UNDO ENDPOINTS
+# ============================================
+
+@app.route('/actions/log', methods=['GET'])
+def api_get_action_log():
+    """
+    Get recent actions (running list of what happened).
+
+    Query params:
+    - limit: Max actions to return (default 50)
+    - note_path: Filter by paper (optional)
+    """
+    from linking.link_preview import get_action_log
+
+    limit = request.args.get('limit', 50, type=int)
+    note_path = request.args.get('note_path')
+
+    try:
+        actions = get_action_log(limit, note_path)
+        return jsonify({
+            "status": "success",
+            "actions": actions
+        })
+    except Exception as e:
+        return jsonify({
+            "status": "error",
+            "message": str(e)
+        }), 500
+
+
+@app.route('/actions/undo', methods=['POST'])
+def api_undo_action():
+    """
+    Undo a specific action.
+
+    The plugin sends:
+    - action_uuid: Which action to undo
+    """
+    from linking.link_preview import undo_action
+
+    data = request.get_json()
+    action_uuid = data.get('action_uuid')
+
+    try:
+        result = undo_action(action_uuid)
+        return jsonify({
+            "status": "success" if result["success"] else "error",
+            "result": result
+        })
+    except Exception as e:
+        return jsonify({
+            "status": "error",
+            "message": str(e)
+        }), 500
+
+
+# ============================================
+# MULTI-SOURCE LINK DATA (Hover popup)
+# ============================================
+
+@app.route('/link/sources', methods=['POST'])
+def api_get_link_sources():
+    """
+    Get all available sources for a term (for hover popup).
+
+    Shows: Glossary, Stanford, Wikipedia links
+
+    The plugin sends:
+    - term: The term to look up
+    - vault_path: Vault path
+    """
+    from linking.link_preview import get_multi_source_link_data
+
+    data = request.get_json()
+    term = data.get('term')
+    vault_path = data.get('vault_path')
+
+    try:
+        sources = get_multi_source_link_data(term, vault_path)
+        return jsonify({
+            "status": "success",
+            "data": sources
+        })
+    except Exception as e:
+        return jsonify({
+            "status": "error",
+            "message": str(e)
+        }), 500
+
+
+# ============================================
+# MANUAL TERM MANAGEMENT (Persist user additions)
+# ============================================
+
+@app.route('/manual/add', methods=['POST'])
+def api_add_manual_term():
+    """
+    Manually add a term that the system missed.
+    This persists in the database.
+
+    The plugin sends:
+    - term: The term to add
+    - definition: User's definition
+    - vault_path: Where to create file
+    """
+    from linking.paper_scanner import add_manual_term
+    from database.sqlite_db import save_to_sqlite
+    from tags.uuid_manager import generate_uuid
+
+    data = request.get_json()
+    term = data.get('term')
+    definition = data.get('definition')
+    vault_path = data.get('vault_path')
+
+    try:
+        # Save to manual_terms table (persists)
+        save_to_sqlite({
+            "uuid": generate_uuid("manual"),
+            "term": term.lower(),
+            "definition": definition,
+            "added_by": "user"
+        }, "manual_terms")
+
+        # Create definition file
+        result = add_manual_term(term, definition, vault_path)
+
+        return jsonify({
+            "status": "success" if result["success"] else "error",
+            "result": result
+        })
+    except Exception as e:
+        return jsonify({
+            "status": "error",
+            "message": str(e)
+        }), 500
+
+
+@app.route('/manual/list', methods=['GET'])
+def api_list_manual_terms():
+    """
+    List all manually added terms.
+    """
+    try:
+        terms = get_from_sqlite("SELECT * FROM manual_terms ORDER BY created_at DESC")
+        return jsonify({
+            "status": "success",
+            "terms": [dict(t) for t in terms]
+        })
+    except Exception as e:
+        return jsonify({
+            "status": "error",
+            "message": str(e)
+        }), 500
+
+
+@app.route('/manual/delete', methods=['POST'])
+def api_delete_manual_term():
+    """
+    Delete a manually added term.
+
+    The plugin sends:
+    - term: Term to delete
+    """
+    data = request.get_json()
+    term = data.get('term')
+
+    try:
+        from database.sqlite_db import get_connection
+        conn = get_connection()
+        cursor = conn.cursor()
+        cursor.execute("DELETE FROM manual_terms WHERE term = ?", (term.lower(),))
+        deleted = cursor.rowcount
+        conn.commit()
+        conn.close()
+
+        return jsonify({
+            "status": "success" if deleted > 0 else "not_found",
+            "message": f"Deleted term '{term}'" if deleted > 0 else "Term not found"
+        })
+    except Exception as e:
+        return jsonify({
+            "status": "error",
+            "message": str(e)
+        }), 500
+
+
+# ============================================
 # START THE SERVER
 # ============================================
 

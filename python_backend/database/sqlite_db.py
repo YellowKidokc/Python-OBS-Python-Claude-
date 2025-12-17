@@ -205,11 +205,59 @@ def ensure_db_exists():
         )
     ''')
 
+    # ============================================
+    # LINK SETTINGS & ACTION LOG TABLES
+    # ============================================
+
+    # Link settings - stores disabled terms, papers, and preferences
+    cursor.execute('''
+        CREATE TABLE IF NOT EXISTS link_settings (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            uuid TEXT UNIQUE NOT NULL,
+            setting_type TEXT NOT NULL,
+            term TEXT,
+            value TEXT,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            synced INTEGER DEFAULT 0
+        )
+    ''')
+
+    # Action log - running list of all actions (for undo)
+    cursor.execute('''
+        CREATE TABLE IF NOT EXISTS action_log (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            uuid TEXT UNIQUE NOT NULL,
+            action_type TEXT NOT NULL,
+            term TEXT,
+            note_path TEXT,
+            details TEXT,
+            reversible INTEGER DEFAULT 1,
+            undone INTEGER DEFAULT 0,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            synced INTEGER DEFAULT 0
+        )
+    ''')
+
+    # Manual terms - terms added by user that persist
+    cursor.execute('''
+        CREATE TABLE IF NOT EXISTS manual_terms (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            uuid TEXT UNIQUE NOT NULL,
+            term TEXT UNIQUE NOT NULL,
+            definition TEXT,
+            added_by TEXT DEFAULT 'user',
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            synced INTEGER DEFAULT 0
+        )
+    ''')
+
     # Create indexes for faster lookups
     cursor.execute('CREATE INDEX IF NOT EXISTS idx_term_occurrences_term ON term_occurrences(term)')
     cursor.execute('CREATE INDEX IF NOT EXISTS idx_term_occurrences_note ON term_occurrences(note_uuid)')
     cursor.execute('CREATE INDEX IF NOT EXISTS idx_term_registry_term ON term_registry(term)')
     cursor.execute('CREATE INDEX IF NOT EXISTS idx_definition_access_term ON definition_access_log(term)')
+    cursor.execute('CREATE INDEX IF NOT EXISTS idx_link_settings_type ON link_settings(setting_type)')
+    cursor.execute('CREATE INDEX IF NOT EXISTS idx_action_log_type ON action_log(action_type)')
 
     conn.commit()
     conn.close()
