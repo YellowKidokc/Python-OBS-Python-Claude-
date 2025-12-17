@@ -1,0 +1,23 @@
+Analyze the following text and find all CLAIMS.
+
+A claim is a statement that:
+- Asserts something is true or false
+- Could potentially be proven or disproven
+- Makes a testable or debatable assertion
+- Takes a position on a topic
+
+Look for phrases like:
+- "This shows that..."
+- "Evidence suggests..."
+- "We can conclude..."
+- "It follows that..."
+- "Therefore..."
+
+For each claim found, extract the exact quote from the text.
+
+Format your response as a numbered list:
+1. "First claim quote here"
+2. "Second claim quote here"
+
+Only include actual claims - assertions that make a point.
+Do not include definitions, questions, or pure observations.

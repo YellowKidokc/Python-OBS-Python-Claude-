@@ -1,0 +1,62 @@
+# Theophysics Backend Configuration
+# Copy this to settings.local.yaml and customize
+
+# Database Settings
+database:
+  # SQLite (local cache)
+  sqlite:
+    path: "./data/theophysics.db"
+
+  # PostgreSQL (global storage)
+  postgres:
+    host: "localhost"
+    port: 5432
+    database: "theophysics"
+    user: "postgres"
+    password: ""  # Set in environment variable PG_PASSWORD
+
+# AI Settings
+ai:
+  provider: "openai"  # openai, ollama, or anthropic
+  model: "gpt-4"
+  api_key: ""  # Set in environment variable OPENAI_API_KEY
+  max_tokens: 2000
+  temperature: 0.3
+
+# Vault Settings
+vault:
+  path: ""  # Set to your Obsidian vault path
+  definitions_folder: "Definitions"
+  ignore_folders:
+    - ".obsidian"
+    - ".trash"
+    - "templates"
+
+# Linking Settings
+linking:
+  auto_link_on_save: true
+  highlight_style: "bold"  # bold, italic, or none
+  sources:
+    - name: "Stanford Encyclopedia"
+      url: "https://plato.stanford.edu"
+      priority: 1
+    - name: "Wikipedia"
+      url: "https://en.wikipedia.org"
+      priority: 5
+
+# Sync Settings
+sync:
+  auto_sync: true
+  interval_minutes: 5
+  conflict_strategy: "local_wins"  # local_wins, remote_wins, newest_wins
+
+# Server Settings
+server:
+  host: "0.0.0.0"
+  port: 5000
+  debug: true
+
+# Logging
+logging:
+  level: "INFO"  # DEBUG, INFO, WARNING, ERROR
+  file: "./logs/backend.log"
